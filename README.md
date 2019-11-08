@@ -22,7 +22,8 @@ We can now build MAVSDK:
 
 And now we can finally build fake_autopilot. Note that because we did not install MAVSDK on the system (but locally in /tmp/my_test/mavsdk/build/install), we need to tell CMake where to look for it (that’s the __CMAKE_PREFIX_PATH__):
 
-    $ cmake -DCMAKE_PREFIX_PATH=”/tmp/my_test/mavsdk/build/install;/tmp/my_test/mavsdk/build/third_party/install” -Bbuild -S.
+    $ cd ../fake_autopilot
+    $ cmake -DCMAKE_PREFIX_PATH="/tmp/my_test/mavsdk/build/install;/tmp/my_test/mavsdk/build/third_party/install" -Bbuild -S.
     $ cmake --build build
 
 And that’s it! If everything went well, this should result in the binary __build/fake_autopilot__!
