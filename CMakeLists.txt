@@ -9,6 +9,7 @@ else()
 endif()
 
 find_package(MAVSDK REQUIRED)
+find_package (Threads)
 
 add_executable(fake_autopilot fake_autopilot.cpp)
 

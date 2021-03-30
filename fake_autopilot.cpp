@@ -40,16 +40,17 @@ int main(int /* argc */, char** /* argv */)
     std::cout << "Starting fake autopilot" << std::endl;
 
     Mavsdk mavsdk;
-    mavsdk.set_configuration(Mavsdk::Configuration::Autopilot);
+    Mavsdk::Configuration configuration(Mavsdk::Configuration::UsageType::Autopilot);
+    mavsdk.set_configuration(configuration);
 
     ConnectionResult connection_result = mavsdk.setup_udp_remote("127.0.0.1", 14550);
 
-    if (connection_result != ConnectionResult::SUCCESS) {
+    if (connection_result != ConnectionResult::Success) {
         std::cerr << "Error setting up UDP connection!" << std::endl;
         return 1;
     }
 
-    System& system = mavsdk.system();
+    auto system = mavsdk.systems().at(0);
     MavlinkPassthrough mavlink_passthrough(system);
 
     mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_PARAM_REQUEST_LIST, [&mavlink_passthrough](const mavlink_message_t& mavlink_message) {
