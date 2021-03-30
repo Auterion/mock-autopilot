@@ -1,32 +1,26 @@
 ## Build
 
-Let’s say we want to build fake_autopilot in __/tmp/my_test__, and start by creating the folder:
+The most convenient way to build the project is using Docker container with required dependencies installed:
+```
+./docker_run.sh ./build.sh
+```
+Building directly in host system is almost exactly the same, but it's user responsibility to install required packages. The list can be found in [Dockerfile](Dockerfile):
+```
+./build.sh
+```
 
-    $ mkdir /tmp/my_test
-    $ cd /tmp/my_test
-
-We can now pull the fake_autopilot sources:
-
-    $ git clone https://github.com/Auterion/fake_autopilot
-
-Because we depend on MAVSDK, we need to build it. Moreover, we have a small patch to apply to it in order to communicate with QGC. Let’s start by cloning and patching MAVSDK (still from __/tmp/my_test__):
-
-    $ git clone https://github.com/mavlink/mavsdk --recursive
-    $ cd mavsdk
-    $ git apply ../fake_autopilot/mavsdk.patch
-
-We can now build MAVSDK:
-
-    $ cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=build/install -DENABLE_MAVLINK_PASSTHROUGH=ON -Bbuild -S.
-    $ cmake --build build --target install
-
-And now we can finally build fake_autopilot. Note that because we did not install MAVSDK on the system (but locally in /tmp/my_test/mavsdk/build/install), we need to tell CMake where to look for it (that’s the __CMAKE_PREFIX_PATH__):
-
-    $ cd ../fake_autopilot
-    $ cmake -DCMAKE_PREFIX_PATH="/tmp/my_test/mavsdk/build/install;/tmp/my_test/mavsdk/build/third_party/install" -Bbuild -S.
-    $ cmake --build build
-
-And that’s it! If everything went well, this should result in the binary __build/fake_autopilot__!
+By default, the project is built for `amd64` (`x86_64`). To build for different architecture, either an environment variables must be set or options for `docker_run.sh` and `build.sh` scripts provided.
+* environment variables for Skynode build
+```
+    export BASE_IMAGE=arm64v8/ubuntu:20.04
+    export IMAGE=arm64v8/fake-autopilot
+    ./docker_run.sh ./build.sh -b arm64v8_build
+```
+* script arguments for Skynode build
+```
+    ./docker_run.sh -b "arm64v8/ubuntu:20.04" -i "arm64v8/payload-driver-example" 
+    ./build.sh -b arm64v8_build
+```
 
 ## Run
 
