@@ -22,6 +22,20 @@ By default, the project is built for `amd64` (`x86_64`). To build for different 
     ./build.sh -b arm64v8_build
 ```
 
+## Package
+Packaging process is almost exactly the same as `Build`. Use the same steps and settings, but instead calling `build.sh` execute `package.sh`. 
+```
+./docker_run.sh ./package.sh
+```
+By default the result is produced in `output/` directory:
+```
+output/
+├── fake-autopilot_1.0-1_amd64.buildinfo
+├── fake-autopilot_1.0-1_amd64.changes
+├── fake-autopilot_1.0-1_amd64.deb
+└── fake-autopilot-dbgsym_1.0-1_amd64.ddeb
+```
+
 ## Run
 
 It is now simply a matter of running the binary:
