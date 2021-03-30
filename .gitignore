@@ -1,0 +1,14 @@
+*txt.user*
+/.project
+/.vscode
+/build*/
+/debian/*.substvars
+/debian/.debhelper/
+/debian/files
+/debian/debhelper-build-stamp
+/debian/fake-autopilot/
+/debian/tmp/
+/obj-*-linux-gnu/
+/output
+cscope*
+tags
