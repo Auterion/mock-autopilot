@@ -19,21 +19,21 @@ usage()
 {
 	echo "Usage: ${0} [OPTIONS]"
 	echo "Helper script that generate Debian package"
-    echo "    -o  output directory (defaut: '${DEF_OUTPUT}')"
+	echo "    -o  output directory (defaut: '${DEF_OUTPUT}')"
 	echo
 }
 
 main()
 {
-    while getopts ":ho:" _options; do
+	while getopts ":ho:" _options; do
 		case "${_options}" in
 		h)
 			usage
 			exit 0
 			;;
-        o)
-            _output="${OPTARG}"
-            ;;
+		o)
+			_output="${OPTARG}"
+			;;
 		:)
 			err "Option -${OPTARG} requires an argument"
 			exit 1
@@ -46,12 +46,11 @@ main()
 	done
 	shift "$((OPTIND - 1))"
 
-    output="${_output:-${DEF_OUTPUT}}"
+	output="${_output:-${DEF_OUTPUT}}"
 
-    dpkg-buildpackage -us -uc -nc -b
-    mkdir -p "${output}"
-    mv ../fake-autopilot* "${output}"
+	dpkg-buildpackage -us -uc -nc -b
+	mkdir -p "${output}"
+	mv ../fake-autopilot* "${output}"
 }
-
 
 main "${@}"

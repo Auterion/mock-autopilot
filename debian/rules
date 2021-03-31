@@ -23,3 +23,7 @@
 #override_dh_auto_configure:
 #	dh_auto_configure -- #	-DCMAKE_LIBRARY_PATH=$(DEB_HOST_MULTIARCH)
 
+# shlibdeps is looking for MAVSDK libraries in '/lib', but they are actually
+# installed in '/usr/lib'. Mask the error to workaround the issue
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
