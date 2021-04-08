@@ -1,0 +1,5 @@
+Upstream-Name: fake_autopilot
+Source: https://github.com/Auterion/fake_autopilot
+
+Files: *
+Copyright: 2021 Auterion AG

@@ -1,0 +1,21 @@
+name: Build, test and package
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  package:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - run: ./docker_run.sh ./package.sh
+    - uses: actions/upload-artifact@v2
+      with:
+        name: fake-autopilot
+        path: output/**
+        retention-days: 30
