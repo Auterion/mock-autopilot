@@ -6,7 +6,7 @@
 /debian/.debhelper/
 /debian/files
 /debian/debhelper-build-stamp
-/debian/fake-autopilot/
+/debian/mock-autopilot/
 /debian/tmp/
 /obj-*-linux-gnu/
 /output

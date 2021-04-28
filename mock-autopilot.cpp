@@ -37,7 +37,7 @@ static void start_telemetry(MavlinkPassthrough& mavlink_passthrough);
 
 int main(int /* argc */, char** /* argv */)
 {
-    std::cout << "Starting fake autopilot" << std::endl;
+    std::cout << "Starting mock-autopilot" << std::endl;
 
     Mavsdk mavsdk;
     Mavsdk::Configuration configuration(Mavsdk::Configuration::UsageType::Autopilot);

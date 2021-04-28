@@ -16,6 +16,6 @@ jobs:
     - run: ./docker_run.sh ./package.sh
     - uses: actions/upload-artifact@v2
       with:
-        name: fake-autopilot
+        name: mock-autopilot
         path: output/**
         retention-days: 30
