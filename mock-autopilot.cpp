@@ -43,7 +43,7 @@ int main(int /* argc */, char** /* argv */)
     Mavsdk::Configuration configuration(Mavsdk::Configuration::UsageType::Autopilot);
     mavsdk.set_configuration(configuration);
 
-    ConnectionResult connection_result = mavsdk.setup_udp_remote("127.0.0.1", 14551);
+    ConnectionResult connection_result = mavsdk.setup_udp_remote("127.0.0.1", 14550);
 
     if (connection_result != ConnectionResult::Success) {
         std::cerr << "Error setting up UDP connection!" << std::endl;
