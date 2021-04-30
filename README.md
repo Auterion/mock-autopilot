@@ -13,7 +13,7 @@ By default, the project is built for `amd64` (`x86_64`). To build for different 
 * environment variables for Skynode build
 ```
     export BASE_IMAGE=arm64v8/ubuntu:20.04
-    export IMAGE=arm64v8/fake-autopilot
+    export IMAGE=arm64v8/mock-autopilot
     ./docker_run.sh ./build.sh -b arm64v8_build
 ```
 * script arguments for Skynode build
@@ -30,17 +30,17 @@ Packaging process is almost exactly the same as `Build`. Use the same steps and 
 By default the result is produced in `output/` directory:
 ```
 output/
-├── fake-autopilot_1.0-1_amd64.buildinfo
-├── fake-autopilot_1.0-1_amd64.changes
-├── fake-autopilot_1.0-1_amd64.deb
-└── fake-autopilot-dbgsym_1.0-1_amd64.ddeb
+├── mock-autopilot_1.0-1_amd64.buildinfo
+├── mock-autopilot_1.0-1_amd64.changes
+├── mock-autopilot_1.0-1_amd64.deb
+└── mock-autopilot-dbgsym_1.0-1_amd64.ddeb
 ```
 
 ## Run
 
 It is now simply a matter of running the binary:
 
-    $ ./build/fake_autopilot
+    $ ./build/mock-autopilot
 
 Note that it will broadcast MAVLink heartbeats on UDP port 14550 (for QGroundControl), but that can be changed here.
 

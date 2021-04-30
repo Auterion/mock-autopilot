@@ -5,7 +5,7 @@
 
 set -eu
 
-DEF_IMAGE="auterion/fake-autopilot:latest"
+DEF_IMAGE="auterion/mock-autopilot:latest"
 
 usage()
 {

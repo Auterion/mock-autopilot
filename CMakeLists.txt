@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(fake-autopilot)
+project(mock-autopilot)
 
 if(NOT MSVC)
     add_definitions("-std=c++11 -Wall -Wextra -Werror")
@@ -11,13 +11,13 @@ endif()
 find_package(MAVSDK REQUIRED)
 find_package (Threads)
 
-add_executable(fake-autopilot fake_autopilot.cpp)
+add_executable(mock-autopilot mock-autopilot.cpp)
 
-target_link_libraries(fake-autopilot
+target_link_libraries(mock-autopilot
     MAVSDK::mavsdk_mavlink_passthrough
     MAVSDK::mavsdk
 )
 
-install(TARGETS fake-autopilot
+install(TARGETS mock-autopilot
     RUNTIME DESTINATION bin
 )

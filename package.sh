@@ -50,7 +50,7 @@ main()
 
 	dpkg-buildpackage -us -uc -nc -b
 	mkdir -p "${output}"
-	mv ../fake-autopilot* "${output}"
+	mv ../mock-autopilot* "${output}"
 }
 
 main "${@}"
