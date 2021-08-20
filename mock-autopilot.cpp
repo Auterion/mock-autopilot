@@ -7,31 +7,80 @@
 
 using namespace mavsdk;
 
-static const std::string MIS_TAKEOFF_ALT("MIS_TAKEOFF_ALT");
+static const std::string COM_RC_IN_MODE("COM_RC_IN_MODE");
+static const std::string RC_MAP_ROLL("RC_MAP_ROLL");
+static const std::string CAL_MAG2_ID("CAL_MAG2_ID");
+static const std::string CAL_MAG1_ID("CAL_MAG1_ID");
+static const std::string RC_MAP_AUX2("RC_MAP_AUX2");
+static const std::string RC_MAP_AUX1("RC_MAP_AUX1");
+static const std::string RC_MAP_FLAPS("RC_MAP_FLAPS");
+static const std::string RC_MAP_THROTTLE("RC_MAP_THROTTLE");
+static const std::string RC_MAP_YAW("RC_MAP_YAW");
+static const std::string RC_MAP_PITCH("RC_MAP_PITCH");
+static const std::string RTL_LAND_DELAY("RTL_LAND_DELAY");
+static const std::string RTL_DESCEND_ALT("RTL_DESCEND_ALT");
+static const std::string RTL_RETURN_ALT("RTL_RETURN_ALT");
+static const std::string NAV_DLL_ACT("NAV_DLL_ACT");
+static const std::string COM_RC_LOSS_T("COM_RC_LOSS_T");
+static const std::string NAV_RCL_ACT("NAV_RCL_ACT");
+static const std::string COM_LOW_BAT_ACT("COM_LOW_BAT_ACT");
+static const std::string SYS_AUTOSTART("SYS_AUTOSTART");
 static const std::string CAL_GYRO0_ID("CAL_GYRO0_ID");
+static const std::string RC_MAP_FLTM_BTN("RC_MAP_FLTM_BTN");
+static const std::string RC_MAP_MODE_SW("RC_MAP_MODE_SW");
+static const std::string SYS_AUTOCONFIG("SYS_AUTOCONFIG");
+static const std::string MAV_SYS_ID("MAV_SYS_ID");
 static const std::string CAL_ACC0_ID("CAL_ACC0_ID");
 static const std::string CAL_MAG0_ID("CAL_MAG0_ID");
-static const std::string MPC_XY_CRUISE("MPC_XY_CRUISE");
-static const std::string SYS_HITL("SYS_HITL");
+static const std::string RC_MAP_RETURN_SW("RC_MAP_RETURN_SW");
+static const std::string RC_MAP_LOITER_SW("RC_MAP_LOITER_SW");
+static const std::string RC_MAP_POSCTL_SW("RC_MAP_POSCTL_SW");
+static const std::string BAT_N_CELLS("BAT_N_CELLS");
+static const std::string BAT_V_EMPTY("BAT_V_EMPTY");
+static const std::string BAT_V_CHARGED("BAT_V_CHARGED");
 
 std::map<std::string, std::pair<double, int>> params = {
-    {MIS_TAKEOFF_ALT, std::make_pair(2.5, MAV_PARAM_TYPE_REAL32)},
+    {COM_RC_IN_MODE, std::make_pair(1, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_ROLL, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {CAL_MAG2_ID, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {CAL_MAG1_ID, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_AUX2, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_AUX1, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_FLAPS, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_THROTTLE, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_YAW, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_PITCH, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RTL_LAND_DELAY, std::make_pair(0.0, MAV_PARAM_TYPE_REAL32)},
+    {RTL_DESCEND_ALT, std::make_pair(30.0, MAV_PARAM_TYPE_REAL32)},
+    {RTL_RETURN_ALT, std::make_pair(60.0, MAV_PARAM_TYPE_REAL32)},
+    {NAV_DLL_ACT, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {COM_RC_LOSS_T, std::make_pair(0.5, MAV_PARAM_TYPE_REAL32)},
+    {NAV_RCL_ACT, std::make_pair(2, MAV_PARAM_TYPE_INT32)},
+    {COM_LOW_BAT_ACT, std::make_pair(3, MAV_PARAM_TYPE_INT32)},
+    {SYS_AUTOSTART, std::make_pair(4001, MAV_PARAM_TYPE_INT32)},
     {CAL_GYRO0_ID, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_FLTM_BTN, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_MODE_SW, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {SYS_AUTOCONFIG, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {MAV_SYS_ID, std::make_pair(2, MAV_PARAM_TYPE_INT32)},
     {CAL_ACC0_ID, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
     {CAL_MAG0_ID, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
-    {MPC_XY_CRUISE, std::make_pair(5.5, MAV_PARAM_TYPE_REAL32)},
-    {SYS_HITL, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_RETURN_SW, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_LOITER_SW, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {RC_MAP_POSCTL_SW, std::make_pair(0, MAV_PARAM_TYPE_INT32)},
+    {BAT_N_CELLS, std::make_pair(4, MAV_PARAM_TYPE_INT32)},
+    {BAT_V_EMPTY, std::make_pair(3.5, MAV_PARAM_TYPE_REAL32)},
+    {BAT_V_CHARGED, std::make_pair(4.2, MAV_PARAM_TYPE_REAL32)},
+
+
 };
 
-std::vector<std::pair<int, int>> latlngs = {
-    std::make_pair(465205340, 66344040),
-    std::make_pair(465205380, 66342890),
-    std::make_pair(465204770, 66342910),
-};
+std::vector<std::pair<int, int>> latlngs;
 
 static void send_param(MavlinkPassthrough& mavlink_passthrough, std::map<std::string, std::pair<double, int>>& params, const std::string& param_id);
 static void send_protocol_version(MavlinkPassthrough& mavlink_passthrough);
 static void send_autopilot_capabilities(MavlinkPassthrough& mavlink_passthrough);
+static void send_requested_message(MavlinkPassthrough& mavlink_passthrough, float id);
 
 static void start_telemetry(MavlinkPassthrough& mavlink_passthrough);
 
@@ -89,15 +138,16 @@ int main(int /* argc */, char** /* argv */)
         auto mav_result = MAV_RESULT_ACCEPTED;
 
         switch (cmd_id) {
-            case MAV_CMD_REQUEST_PROTOCOL_VERSION:
-                send_protocol_version(mavlink_passthrough);
-                break;
-            case MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES:
-                send_autopilot_capabilities(mavlink_passthrough);
+            case MAV_CMD_REQUEST_MESSAGE:
+                send_requested_message(mavlink_passthrough, cmd_read.param1);
                 break;
             default:
                 mav_result = MAV_RESULT_UNSUPPORTED;
                 break;
+        }
+
+        if (mav_result == MAV_RESULT_UNSUPPORTED) {
+            return;
         }
 
         mavlink_message_t message;
@@ -112,8 +162,10 @@ int main(int /* argc */, char** /* argv */)
                 mavlink_passthrough.get_target_sysid(),
                 mavlink_passthrough.get_target_compid()
                 );
+
         mavlink_passthrough.send_message(message);
         std::cout << "Sent ACK for command: " << cmd_id << std::endl;
+
     });
 
     mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_COMMAND_INT, [](const mavlink_message_t& mavlink_message) {
@@ -241,8 +293,8 @@ static void send_autopilot_capabilities(MavlinkPassthrough& mavlink_passthrough)
             mavlink_passthrough.get_our_sysid(),
             mavlink_passthrough.get_our_compid(),
             &message,
-            8196,
-            0,
+            MAV_PROTOCOL_CAPABILITY_MISSION_INT | MAV_PROTOCOL_CAPABILITY_MAVLINK2,
+            0x010C0000,
             1,
             2,
             3,
@@ -256,6 +308,20 @@ static void send_autopilot_capabilities(MavlinkPassthrough& mavlink_passthrough)
             );
     mavlink_passthrough.send_message(message);
     std::cout << "Sent autopilot capatilities" << std::endl;
+}
+
+static void send_requested_message(MavlinkPassthrough& mavlink_passthrough, float id) {
+    uint32_t message_id = static_cast<uint32_t>(id);
+    switch (message_id) {
+        case MAVLINK_MSG_ID_PROTOCOL_VERSION:
+            send_protocol_version(mavlink_passthrough);
+            break;
+        case MAVLINK_MSG_ID_AUTOPILOT_VERSION:
+            send_autopilot_capabilities(mavlink_passthrough);
+            break;
+        default:
+            break;
+    }
 }
 
 static void start_telemetry(MavlinkPassthrough& mavlink_passthrough) {
@@ -296,11 +362,25 @@ static void start_telemetry(MavlinkPassthrough& mavlink_passthrough) {
             45
             );
 
+    mavlink_message_t heartbeat;
+    mavlink_msg_heartbeat_pack(
+            mavlink_passthrough.get_our_sysid(),
+            mavlink_passthrough.get_our_compid(),
+            &heartbeat,
+            MAV_TYPE_QUADROTOR,
+            MAV_AUTOPILOT_PX4,
+            0,
+            0,
+            MAV_STATE_ACTIVE
+            );
+
     while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mavlink_passthrough.send_message(heartbeat);
+        //std::cout << "Sending autopilot heartbeat" << std::endl;
         mavlink_passthrough.send_message(message0);
         //std::cout << "Sending home position" << std::endl;
         mavlink_passthrough.send_message(message);
         //std::cout << "Sending position" << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
