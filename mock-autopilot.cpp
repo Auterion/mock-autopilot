@@ -4,6 +4,8 @@
 #include <mavsdk/mavsdk.h>
 #include <mavsdk/plugins/mavlink_passthrough/mavlink_passthrough.h>
 #include <thread>
+#include <memory>
+#include <future>
 
 using namespace mavsdk;
 
@@ -76,17 +78,22 @@ std::map<std::string, std::pair<double, int>> params = {
 };
 
 std::vector<std::pair<int, int>> latlngs;
+std::shared_ptr<MavlinkPassthrough> mavlink_passthrough;
 
-static void send_param(MavlinkPassthrough& mavlink_passthrough, std::map<std::string, std::pair<double, int>>& params, const std::string& param_id);
-static void send_protocol_version(MavlinkPassthrough& mavlink_passthrough);
-static void send_autopilot_capabilities(MavlinkPassthrough& mavlink_passthrough);
-static void send_requested_message(MavlinkPassthrough& mavlink_passthrough, float id);
+static void send_param(std::shared_ptr<MavlinkPassthrough>, std::map<std::string, std::pair<double, int>>& params, const std::string& param_id);
+static void send_protocol_version(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough);
+static void send_autopilot_capabilities(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough);
+static void send_requested_message(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, float id);
 
-static void start_telemetry(MavlinkPassthrough& mavlink_passthrough);
+static void prepare_vehicle_messages(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos);
+static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough);
+static void send_telemetry(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos);
 
 int main(int /* argc */, char** /* argv */)
 {
     std::cout << "Starting mock-autopilot" << std::endl;
+    bool gcs_connected = false;
+    mavlink_message_t home_pos, global_pos;
 
     Mavsdk mavsdk;
     Mavsdk::Configuration configuration(Mavsdk::Configuration::UsageType::Autopilot);
@@ -99,10 +106,88 @@ int main(int /* argc */, char** /* argv */)
         return 1;
     }
 
-    auto system = mavsdk.systems().at(0);
-    MavlinkPassthrough mavlink_passthrough(system);
+    // Get Vehicle system that is already created when we configure mavsdk as autopilot
+    auto system_vehicle = mavsdk.systems().at(0);
+    MavlinkPassthrough mavlink_passthrough_vehicle(system_vehicle);
+    prepare_vehicle_messages(mavlink_passthrough_vehicle, home_pos, global_pos);
 
-    mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_PARAM_REQUEST_LIST, [&mavlink_passthrough](const mavlink_message_t& mavlink_message) {
+    while (true) {
+        // Send autopilot telemetry
+        send_telemetry(mavlink_passthrough_vehicle, home_pos, global_pos);
+
+        // Detect GCS connection or disconnection
+        bool detected = false;
+        for(auto system : mavsdk.systems()) {
+            if (system->get_system_id() == 255) {
+                if(!gcs_connected) {
+                    mavlink_passthrough = std::make_shared<MavlinkPassthrough>(system);
+                    subscribe_all(mavlink_passthrough);
+                }
+                detected = true;
+                gcs_connected = true;
+            }
+        }
+
+        // Disconnect from GCS system
+        if (!detected) {
+            gcs_connected = false;
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
+    return 0;
+}
+
+static void prepare_vehicle_messages(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos) {
+    float q[4] = {0, 0, 0, 0};
+
+    mavlink_msg_home_position_pack(
+            mavlink_passthrough.get_our_sysid(),
+            mavlink_passthrough.get_our_compid(),
+            &home_pos,
+            465204700,
+            66343820,
+            431000,
+            0,
+            0,
+            0,
+            q,
+            0,
+            0,
+            0,
+            0
+            );
+
+    mavlink_msg_global_position_int_pack(
+            mavlink_passthrough.get_our_sysid(),
+            mavlink_passthrough.get_our_compid(),
+            &global_pos,
+            0,
+            465204700,
+            66343820,
+            440000,
+            9,
+            0,
+            0,
+            0,
+            45
+            );
+
+    // mavlink_msg_heartbeat_pack(
+    //         mavlink_passthrough.get_our_sysid(),
+    //         mavlink_passthrough.get_our_compid(),
+    //         &heartbeat,
+    //         MAV_TYPE_QUADROTOR,
+    //         MAV_AUTOPILOT_PX4,
+    //         0,
+    //         0,
+    //         MAV_STATE_ACTIVE
+    //         );
+}
+
+static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough) {
+    mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_PARAM_REQUEST_LIST, [mavlink_passthrough](const mavlink_message_t& mavlink_message) {
         std::cout << "MAVLINK_MSG_ID_PARAM_REQUEST_LIST: " << mavlink_message.msgid << std::endl;
 
         for (const auto& param : params) {
@@ -111,7 +196,7 @@ int main(int /* argc */, char** /* argv */)
         }
     });
 
-    mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_PARAM_REQUEST_READ, [&mavlink_passthrough](const mavlink_message_t& mavlink_message) {
+    mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_PARAM_REQUEST_READ, [mavlink_passthrough](const mavlink_message_t& mavlink_message) {
         mavlink_param_request_read_t param_request_read;
         mavlink_msg_param_request_read_decode(&mavlink_message, &param_request_read);
 
@@ -126,7 +211,7 @@ int main(int /* argc */, char** /* argv */)
         send_param(mavlink_passthrough, params, param_id);
     });
 
-    mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_COMMAND_LONG, [&mavlink_passthrough](const mavlink_message_t& mavlink_message) {
+    mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_COMMAND_LONG, [mavlink_passthrough](const mavlink_message_t& mavlink_message) {
         std::cout << "MAVLINK_MSG_ID_COMMAND_LONG: " << mavlink_message.msgid << std::endl;
 
         mavlink_command_long_t cmd_read;
@@ -147,55 +232,52 @@ int main(int /* argc */, char** /* argv */)
         }
 
         if (mav_result == MAV_RESULT_UNSUPPORTED) {
+            std::cout << "Unsupported command" << std::endl;
             return;
         }
 
         mavlink_message_t message;
         mavlink_msg_command_ack_pack(
-                mavlink_passthrough.get_our_sysid(),
-                mavlink_passthrough.get_our_compid(),
+                1,
+                1,
                 &message,
                 cmd_id,
                 mav_result,
                 255,
                 -1,
-                mavlink_passthrough.get_target_sysid(),
-                mavlink_passthrough.get_target_compid()
+                mavlink_passthrough->get_target_sysid(),
+                mavlink_passthrough->get_target_compid()
                 );
 
-        mavlink_passthrough.send_message(message);
+        mavlink_passthrough->send_message(message);
         std::cout << "Sent ACK for command: " << cmd_id << std::endl;
 
     });
 
-    mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_COMMAND_INT, [](const mavlink_message_t& mavlink_message) {
+    mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_COMMAND_INT, [](const mavlink_message_t& mavlink_message) {
         std::cout << "MAVLINK_MSG_ID_COMMAND_INT: " << mavlink_message.msgid << std::endl;
     });
 
-    mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_HEARTBEAT, [](const mavlink_message_t& /*mavlink_message*/) {
-        //std::cout << "MAVLINK_MSG_ID_HEARTBEAT: " << mavlink_message.msgid << std::endl;
-    });
-
-    mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_MISSION_REQUEST_LIST, [&mavlink_passthrough](const mavlink_message_t& mavlink_message){
+    mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_MISSION_REQUEST_LIST, [mavlink_passthrough](const mavlink_message_t& mavlink_message){
         std::cout << "MAVLINK_MSG_ID_MISSION_REQUEST_LIST: " << mavlink_message.msgid << std::endl;
 
         const auto mission_size = latlngs.size();
 
         mavlink_message_t message;
         mavlink_msg_mission_count_pack(
-                mavlink_passthrough.get_our_sysid(),
-                mavlink_passthrough.get_our_compid(),
+                1,
+                1,
                 &message,
-                mavlink_passthrough.get_target_sysid(),
-                mavlink_passthrough.get_target_compid(),
+                mavlink_passthrough->get_target_sysid(),
+                mavlink_passthrough->get_target_compid(),
                 mission_size,
                 MAV_MISSION_TYPE_MISSION
                 );
-        mavlink_passthrough.send_message(message);
+        mavlink_passthrough->send_message(message);
         std::cout << "Sent MISSION_COUNT with size: " << mission_size << std::endl;
     });
 
-    mavlink_passthrough.subscribe_message_async(MAVLINK_MSG_ID_MISSION_REQUEST_INT, [&mavlink_passthrough](const mavlink_message_t& mavlink_message) {
+    mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_MISSION_REQUEST_INT, [mavlink_passthrough](const mavlink_message_t& mavlink_message) {
         std::cout << "MAVLINK_MSG_ID_MISSION_REQUEST_INT: " << mavlink_message.msgid << std::endl;
 
         mavlink_mission_request_int_t mission_request_int;
@@ -217,11 +299,11 @@ int main(int /* argc */, char** /* argv */)
 
             mavlink_message_t message;
             mavlink_msg_mission_item_int_pack(
-                    mavlink_passthrough.get_our_sysid(),
-                    mavlink_passthrough.get_our_compid(),
+                    1,
+                    1,
                     &message,
-                    mavlink_passthrough.get_target_sysid(),
-                    mavlink_passthrough.get_target_compid(),
+                    mavlink_passthrough->get_target_sysid(),
+                    mavlink_passthrough->get_target_compid(),
                     requested_item_id,
                     MAV_FRAME_MISSION,
                     MAV_CMD_NAV_WAYPOINT,
@@ -236,17 +318,17 @@ int main(int /* argc */, char** /* argv */)
                     altitude_m,
                     MAV_MISSION_TYPE_MISSION
                     );
-            mavlink_passthrough.send_message(message);
+            mavlink_passthrough->send_message(message);
             std::cout << "Sent mission item with id: " << requested_item_id << std::endl;
         }
     });
 
-    start_telemetry(mavlink_passthrough);
-
-    return 0;
+    // mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_HEARTBEAT, [](const mavlink_message_t& mavlink_message) {
+    //     // std::cout << "MAVLINK_MSG_ID_HEARTBEAT: " << std::to_string(mavlink_message.compid) << std::endl;
+    // });
 }
 
-static void send_param(MavlinkPassthrough& mavlink_passthrough, std::map<std::string, std::pair<double, int>>& params, const std::string& param_id) {
+static void send_param(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, std::map<std::string, std::pair<double, int>>& params, const std::string& param_id) {
     const auto param = params[param_id];
     const auto param_value = param.first;
     const auto param_type = param.second;
@@ -255,8 +337,8 @@ static void send_param(MavlinkPassthrough& mavlink_passthrough, std::map<std::st
 
     mavlink_message_t message;
     mavlink_msg_param_value_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
+            1,
+            1,
             &message,
             param_id.c_str(),
             param_value,
@@ -264,18 +346,18 @@ static void send_param(MavlinkPassthrough& mavlink_passthrough, std::map<std::st
             params_count,
             param_index
             );
-    mavlink_passthrough.send_message(message);
+    mavlink_passthrough->send_message(message);
     std::cout << "Sent " << param_id << " with value: " << param_value << std::endl;
 }
 
-static void send_protocol_version(MavlinkPassthrough& mavlink_passthrough) {
+static void send_protocol_version(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough) {
     const uint16_t version = 200;
     const uint16_t min_version = 100;
     const uint16_t max_version = 200;
     mavlink_message_t message;
     mavlink_msg_protocol_version_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
+            mavlink_passthrough->get_our_sysid(),
+            mavlink_passthrough->get_our_compid(),
             &message,
             version,
             min_version,
@@ -283,15 +365,16 @@ static void send_protocol_version(MavlinkPassthrough& mavlink_passthrough) {
             nullptr,
             nullptr
             );
-    mavlink_passthrough.send_message(message);
+
+    mavlink_passthrough->send_message(message);
     std::cout << "Sent protocol version: " << version << " (min: " << min_version << ", max: " << max_version << ")" << std::endl;
 }
 
-static void send_autopilot_capabilities(MavlinkPassthrough& mavlink_passthrough) {
+static void send_autopilot_capabilities(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough) {
     mavlink_message_t message;
     mavlink_msg_autopilot_version_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
+            1,
+            1,
             &message,
             MAV_PROTOCOL_CAPABILITY_MISSION_INT | MAV_PROTOCOL_CAPABILITY_MAVLINK2,
             0x010C0000,
@@ -306,17 +389,20 @@ static void send_autopilot_capabilities(MavlinkPassthrough& mavlink_passthrough)
             1291,
             nullptr
             );
-    mavlink_passthrough.send_message(message);
+
+    mavlink_passthrough->send_message(message);
     std::cout << "Sent autopilot capatilities" << std::endl;
 }
 
-static void send_requested_message(MavlinkPassthrough& mavlink_passthrough, float id) {
+static void send_requested_message(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, float id) {
     uint32_t message_id = static_cast<uint32_t>(id);
     switch (message_id) {
         case MAVLINK_MSG_ID_PROTOCOL_VERSION:
+            std::cout << "send_protocol_version" << std::endl;
             send_protocol_version(mavlink_passthrough);
             break;
         case MAVLINK_MSG_ID_AUTOPILOT_VERSION:
+            std::cout << "send_autopilot_capabilities" << std::endl;
             send_autopilot_capabilities(mavlink_passthrough);
             break;
         default:
@@ -324,63 +410,10 @@ static void send_requested_message(MavlinkPassthrough& mavlink_passthrough, floa
     }
 }
 
-static void start_telemetry(MavlinkPassthrough& mavlink_passthrough) {
-    std::cout << "Starting telemetry" << std::endl;
-    float q[4] = {0, 0, 0, 0};
+static void send_telemetry(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos) {
 
-    mavlink_message_t message0;
-    mavlink_msg_home_position_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
-            &message0,
-            465204700,
-            66343820,
-            431000,
-            0,
-            0,
-            0,
-            q,
-            0,
-            0,
-            0,
-            0
-            );
-
-    mavlink_message_t message;
-    mavlink_msg_global_position_int_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
-            &message,
-            0,
-            465204700,
-            66343820,
-            440000,
-            9,
-            0,
-            0,
-            0,
-            45
-            );
-
-    mavlink_message_t heartbeat;
-    mavlink_msg_heartbeat_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
-            &heartbeat,
-            MAV_TYPE_QUADROTOR,
-            MAV_AUTOPILOT_PX4,
-            0,
-            0,
-            MAV_STATE_ACTIVE
-            );
-
-    while (true) {
-        mavlink_passthrough.send_message(heartbeat);
-        //std::cout << "Sending autopilot heartbeat" << std::endl;
-        mavlink_passthrough.send_message(message0);
-        //std::cout << "Sending home position" << std::endl;
-        mavlink_passthrough.send_message(message);
-        //std::cout << "Sending position" << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+    mavlink_passthrough.send_message(home_pos);
+    //std::cout << "Sending home position" << std::endl;
+    mavlink_passthrough.send_message(global_pos);
+    //std::cout << "Sending position" << std::endl;
 }

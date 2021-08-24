@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.16)
 project(mock-autopilot)
 
 if(NOT MSVC)
-    add_definitions("-std=c++11 -Wall -Wextra -Werror")
+    add_definitions("-std=c++14 -Wall -Wextra")
 else()
-    add_definitions("-std=c++11 -WX -W2")
+    add_definitions("-std=c++14 -WX -W2")
 endif()
 
 find_package(MAVSDK REQUIRED)
