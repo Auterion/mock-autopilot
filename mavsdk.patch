@@ -1,78 +1,22 @@
-diff --git a/src/core/mavsdk.h b/src/core/mavsdk.h
-index b31a40fb..b2958d35 100644
---- a/src/core/mavsdk.h
-+++ b/src/core/mavsdk.h
-@@ -135,6 +135,7 @@ public:
-      * @brief Possible configurations.
-      */
-     enum class Configuration {
-+        Autopilot, /**< @brief SDK is used as an autopilot. */
-         GroundStation, /**< @brief SDK is used as a ground station. */
-         CompanionComputer /**< @brief SDK is used on a companion computer onboard the system (e.g.
-                              drone). */
 diff --git a/src/core/mavsdk_impl.cpp b/src/core/mavsdk_impl.cpp
-index 2c6cbfd4..d43f0c6b 100644
+index f36f0088..8b7ef9e9 100644
 --- a/src/core/mavsdk_impl.cpp
 +++ b/src/core/mavsdk_impl.cpp
-@@ -79,9 +79,9 @@ void MavsdkImpl::receive_message(mavlink_message_t& message)
-     //        itself with sysid 255.
-     //        A better way would probably be to parse the heartbeat message and
-     //        look at type and check if it is MAV_TYPE_GCS.
--    if (message.sysid == 255) {
--        return;
--    }
-+    //if (message.sysid == 255) {
-+    //    return;
-+    //}
- 
-     std::lock_guard<std::recursive_mutex> lock(_systems_mutex);
- 
-@@ -311,6 +311,9 @@ System& MavsdkImpl::get_system(const uint64_t uuid)
- uint8_t MavsdkImpl::get_own_system_id() const
+@@ -474,7 +474,7 @@ uint8_t MavsdkImpl::get_mav_type() const
  {
-     switch (_configuration.load()) {
-+        case Mavsdk::Configuration::Autopilot:
-+            return 1;
-+
-         case Mavsdk::Configuration::GroundStation:
-             return MAV_COMP_ID_MISSIONPLANNER;
+     switch (_configuration.get_usage_type()) {
+         case Mavsdk::Configuration::UsageType::Autopilot:
+-            return MAV_TYPE_GENERIC;
++            return MAV_TYPE_QUADROTOR;
  
-@@ -328,6 +331,9 @@ uint8_t MavsdkImpl::get_own_system_id() const
- uint8_t MavsdkImpl::get_own_component_id() const
- {
-     switch (_configuration.load()) {
-+        case Mavsdk::Configuration::Autopilot:
-+            return MAV_COMP_ID_AUTOPILOT1;
-+
-         case Mavsdk::Configuration::GroundStation:
-             // FIXME: For now we increment by 1 to avoid conflicts with others.
-             return MAV_COMP_ID_MISSIONPLANNER + 1;
-@@ -345,10 +351,15 @@ uint8_t MavsdkImpl::get_own_component_id() const
- uint8_t MavsdkImpl::get_mav_type() const
- {
-     switch (_configuration.load()) {
-+        case Mavsdk::Configuration::Autopilot:
-+            return MAV_TYPE_GENERIC;
-+
-         case Mavsdk::Configuration::GroundStation:
+         case Mavsdk::Configuration::UsageType::GroundStation:
              return MAV_TYPE_GCS;
-+
-         case Mavsdk::Configuration::CompanionComputer:
-             return MAV_TYPE_ONBOARD_CONTROLLER;
-+
-         default:
-             LogErr() << "Unknown configuration";
-             return 0;
-diff --git a/src/core/udp_connection.cpp b/src/core/udp_connection.cpp
-index 32166310..0b03a336 100644
---- a/src/core/udp_connection.cpp
-+++ b/src/core/udp_connection.cpp
-@@ -243,7 +243,7 @@ void UdpConnection::receive()
-             const uint8_t sysid = _mavlink_receiver->get_last_message().sysid;
- 
-             // FIXME: We ignore messages from QGC (255) for now.
--            if (!saved_remote && sysid != 0 && sysid != 255) {
-+            if (!saved_remote && sysid != 0 /*&& sysid != 255*/) {
-                 saved_remote = true;
-                 {
-                     std::lock_guard<std::mutex> lock(_remote_mutex);
+@@ -694,7 +694,7 @@ void MavsdkImpl::send_heartbeat()
+         get_own_component_id(),
+         &message,
+         get_mav_type(),
+-        get_own_component_id() == MAV_COMP_ID_AUTOPILOT1 ? MAV_AUTOPILOT_GENERIC :
++        get_own_component_id() == MAV_COMP_ID_AUTOPILOT1 ? MAV_AUTOPILOT_PX4 :
+                                                            MAV_AUTOPILOT_INVALID,
+         0,
+         0,

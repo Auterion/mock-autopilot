@@ -12,9 +12,12 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install mavsdk dependency.
 # hadolint ignore=DL3020
-ADD "https://github.com/mavlink/MAVSDK/releases/download/v0.38.2/mavsdk_0.38.2_ubuntu20.04_amd64.deb" "."
-RUN dpkg -i mavsdk_0.38.2_ubuntu20.04_amd64.deb \
-    && rm mavsdk_0.38.2_ubuntu20.04_amd64.deb
+# ADD "https://github.com/mavlink/MAVSDK/releases/download/v0.39.0/mavsdk_0.39.0_ubuntu20.04_amd64.deb" "."
+COPY mavsdk_0.39.0_ubuntu20.04_amd64.deb .
+RUN dpkg -i mavsdk_0.39.0_ubuntu20.04_amd64.deb \
+    && rm mavsdk_0.39.0_ubuntu20.04_amd64.deb
+
+RUN ldconfig
 
 # Install requirements to build image
 # hadolint ignore=DL3008,DL3015
