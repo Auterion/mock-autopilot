@@ -227,13 +227,8 @@ static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthroug
                 send_requested_message(mavlink_passthrough, cmd_read.param1);
                 break;
             default:
-                mav_result = MAV_RESULT_UNSUPPORTED;
-                break;
-        }
-
-        if (mav_result == MAV_RESULT_UNSUPPORTED) {
-            std::cout << "Unsupported command" << std::endl;
-            return;
+                std::cout << "Unsupported command" << std::endl;
+                return;
         }
 
         mavlink_message_t message;
@@ -377,7 +372,7 @@ static void send_autopilot_capabilities(std::shared_ptr<MavlinkPassthrough> mavl
             1,
             &message,
             MAV_PROTOCOL_CAPABILITY_MISSION_INT | MAV_PROTOCOL_CAPABILITY_MAVLINK2,
-            0x010C0000,
+            0x010C0000, // Software version: v1.14.0-dev. 4 bytes (1, 14, 0 , 0). Last 0 means (dev).
             1,
             2,
             3,
