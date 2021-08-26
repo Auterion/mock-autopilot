@@ -2,6 +2,7 @@
 /.project
 /.vscode
 /build*/
+/debian/*.debhelper.log
 /debian/*.substvars
 /debian/.debhelper/
 /debian/files
