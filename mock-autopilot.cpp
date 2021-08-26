@@ -78,16 +78,16 @@ std::map<std::string, std::pair<double, int>> params = {
 };
 
 std::vector<std::pair<int, int>> latlngs;
-std::shared_ptr<MavlinkPassthrough> mavlink_passthrough;
+std::shared_ptr<MavlinkPassthrough> mavlink_passthrough_gcs;
+std::shared_ptr<MavlinkPassthrough> mavlink_passthrough_vehicle;
 
 static void send_param(std::shared_ptr<MavlinkPassthrough>, std::map<std::string, std::pair<double, int>>& params, const std::string& param_id);
 static void send_protocol_version(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough);
 static void send_autopilot_capabilities(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough);
 static void send_requested_message(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, float id);
-
-static void prepare_vehicle_messages(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos);
+static void prepare_vehicle_messages(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos);
 static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough);
-static void send_telemetry(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos);
+static void send_telemetry(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos);
 
 int main(int /* argc */, char** /* argv */)
 {
@@ -108,7 +108,7 @@ int main(int /* argc */, char** /* argv */)
 
     // Get Vehicle system that is already created when we configure mavsdk as autopilot
     auto system_vehicle = mavsdk.systems().at(0);
-    MavlinkPassthrough mavlink_passthrough_vehicle(system_vehicle);
+    mavlink_passthrough_vehicle = std::make_shared<MavlinkPassthrough>(system_vehicle);
     prepare_vehicle_messages(mavlink_passthrough_vehicle, home_pos, global_pos);
 
     while (true) {
@@ -120,8 +120,8 @@ int main(int /* argc */, char** /* argv */)
         for(auto system : mavsdk.systems()) {
             if (system->get_system_id() == 255) {
                 if(!gcs_connected) {
-                    mavlink_passthrough = std::make_shared<MavlinkPassthrough>(system);
-                    subscribe_all(mavlink_passthrough);
+                    mavlink_passthrough_gcs = std::make_shared<MavlinkPassthrough>(system);
+                    subscribe_all(mavlink_passthrough_gcs);
                 }
                 detected = true;
                 gcs_connected = true;
@@ -139,12 +139,12 @@ int main(int /* argc */, char** /* argv */)
     return 0;
 }
 
-static void prepare_vehicle_messages(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos) {
+static void prepare_vehicle_messages(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos) {
     float q[4] = {0, 0, 0, 0};
 
     mavlink_msg_home_position_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
+            mavlink_passthrough->get_our_sysid(),
+            mavlink_passthrough->get_our_compid(),
             &home_pos,
             465204700,
             66343820,
@@ -160,8 +160,8 @@ static void prepare_vehicle_messages(MavlinkPassthrough& mavlink_passthrough, ma
             );
 
     mavlink_msg_global_position_int_pack(
-            mavlink_passthrough.get_our_sysid(),
-            mavlink_passthrough.get_our_compid(),
+            mavlink_passthrough->get_our_sysid(),
+            mavlink_passthrough->get_our_compid(),
             &global_pos,
             0,
             465204700,
@@ -174,9 +174,11 @@ static void prepare_vehicle_messages(MavlinkPassthrough& mavlink_passthrough, ma
             45
             );
 
+    // I will leave this comment for now because this is what I need to patch in mavsdk. As soon as I do it
+    // I will remove this code.
     // mavlink_msg_heartbeat_pack(
-    //         mavlink_passthrough.get_our_sysid(),
-    //         mavlink_passthrough.get_our_compid(),
+    //         mavlink_passthrough->get_our_sysid(),
+    //         mavlink_passthrough->get_our_compid(),
     //         &heartbeat,
     //         MAV_TYPE_QUADROTOR,
     //         MAV_AUTOPILOT_PX4,
@@ -233,8 +235,8 @@ static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthroug
 
         mavlink_message_t message;
         mavlink_msg_command_ack_pack(
-                1,
-                1,
+                mavlink_passthrough->get_our_sysid(),
+                mavlink_passthrough->get_our_compid(),
                 &message,
                 cmd_id,
                 mav_result,
@@ -260,7 +262,7 @@ static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthroug
 
         mavlink_message_t message;
         mavlink_msg_mission_count_pack(
-                1,
+                mavlink_passthrough->get_our_sysid(),
                 1,
                 &message,
                 mavlink_passthrough->get_target_sysid(),
@@ -294,8 +296,8 @@ static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthroug
 
             mavlink_message_t message;
             mavlink_msg_mission_item_int_pack(
-                    1,
-                    1,
+                    mavlink_passthrough->get_our_sysid(),
+                    mavlink_passthrough->get_our_compid(),
                     &message,
                     mavlink_passthrough->get_target_sysid(),
                     mavlink_passthrough->get_target_compid(),
@@ -317,10 +319,6 @@ static void subscribe_all(std::shared_ptr<MavlinkPassthrough> mavlink_passthroug
             std::cout << "Sent mission item with id: " << requested_item_id << std::endl;
         }
     });
-
-    // mavlink_passthrough->subscribe_message_async(MAVLINK_MSG_ID_HEARTBEAT, [](const mavlink_message_t& mavlink_message) {
-    //     // std::cout << "MAVLINK_MSG_ID_HEARTBEAT: " << std::to_string(mavlink_message.compid) << std::endl;
-    // });
 }
 
 static void send_param(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, std::map<std::string, std::pair<double, int>>& params, const std::string& param_id) {
@@ -332,8 +330,8 @@ static void send_param(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, 
 
     mavlink_message_t message;
     mavlink_msg_param_value_pack(
-            1,
-            1,
+            mavlink_passthrough->get_our_sysid(),
+            mavlink_passthrough->get_our_compid(),
             &message,
             param_id.c_str(),
             param_value,
@@ -368,8 +366,8 @@ static void send_protocol_version(std::shared_ptr<MavlinkPassthrough> mavlink_pa
 static void send_autopilot_capabilities(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough) {
     mavlink_message_t message;
     mavlink_msg_autopilot_version_pack(
-            1,
-            1,
+            mavlink_passthrough->get_our_sysid(),
+            mavlink_passthrough->get_our_compid(),
             &message,
             MAV_PROTOCOL_CAPABILITY_MISSION_INT | MAV_PROTOCOL_CAPABILITY_MAVLINK2,
             0x010C0000, // Software version: v1.14.0-dev. 4 bytes (1, 14, 0 , 0). Last 0 means (dev).
@@ -405,10 +403,10 @@ static void send_requested_message(std::shared_ptr<MavlinkPassthrough> mavlink_p
     }
 }
 
-static void send_telemetry(MavlinkPassthrough& mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos) {
+static void send_telemetry(std::shared_ptr<MavlinkPassthrough> mavlink_passthrough, mavlink_message_t &home_pos, mavlink_message_t &global_pos) {
 
-    mavlink_passthrough.send_message(home_pos);
+    mavlink_passthrough->send_message(home_pos);
     //std::cout << "Sending home position" << std::endl;
-    mavlink_passthrough.send_message(global_pos);
+    mavlink_passthrough->send_message(global_pos);
     //std::cout << "Sending position" << std::endl;
 }
